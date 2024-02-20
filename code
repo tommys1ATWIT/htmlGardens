@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Time Calculator</title>
+    <script>
+        function calculateTotal() {
+            var commuteTime = parseFloat(document.getElementById('commuteTime').value);
+
+            // Convert commute time to hours
+            var commuteTimeHours = commuteTime / 60; // convert minutes to hours
+
+            var locationContainers = document.querySelectorAll('.location');
+            var totalWorkTimePerLocation = [];
+            var totalWorkTime = 0;
+            var totalEmployees = 0;
+
+            locationContainers.forEach(function(locationContainer) {
+                var locationTimes = locationContainer.querySelectorAll('.timeInput');
+
+                var employeeWorkHours = 0;
+
+                for (var i = 0; i < locationTimes.length; i += 2) {
+                    var employeeInTime = new Date('2000-01-01T' + locationTimes[i].value + ':00');
+                    var employeeOutTime = new Date('2000-01-01T' + locationTimes[i + 1].value + ':00');
+
+                    var employeeWorkTime = (employeeOutTime - employeeInTime) / (1000 * 60 * 60); // Difference in hours
+                    employeeWorkHours += employeeWorkTime;
+                    totalEmployees++;
+                }
+
+                // Total work time for the location
+                totalWorkTime += employeeWorkHours;
+                totalWorkTimePerLocation.push(employeeWorkHours); // Store total work time for this location
+            });
+
+            var totalCommuteTime = 0;
+
+            locationContainers.forEach(function(locationContainer, index) {
+                var locationWorkTime = totalWorkTimePerLocation[index];
+                var locationCommuteTime = (locationWorkTime / totalWorkTime) * commuteTimeHours;
+                totalCommuteTime += locationCommuteTime;
+            });
+
+            // Display total work time per location
+            var totalWorkTimeHTML = "<ul>";
+            totalWorkTimePerLocation.forEach(function(time, index) {
+                var locationName = document.getElementById('locationName-' + (index + 1)).value;
+                totalWorkTimeHTML += "<li>" + locationName + ": " + (time + (time / totalWorkTime * totalCommuteTime)).toFixed(2) + " hours</li>";
+            });
+            totalWorkTimeHTML += "</ul>";
+
+            document.getElementById('totalWorkTime').innerHTML = totalWorkTimeHTML;
+
+            // Return calculations as message
+            return totalWorkTimeHTML;
+        }
+
+        function addEmployee(container) {
+            var employeeContainer = container.previousElementSibling;
+            var employeeInput = document.createElement('input');
+            employeeInput.type = 'text';
+            employeeInput.placeholder = 'Employee';
+            employeeInput.classList.add('locationEmployee');
+            employeeInput.value = 'JOHN';
+
+            var timeInput1 = document.createElement('input');
+            timeInput1.type = 'time';
+            timeInput1.classList.add('timeInput');
+            timeInput1.value = '08:00';
+
+            var timeInput2 = document.createElement('input');
+            timeInput2.type = 'time';
+            timeInput2.classList.add('timeInput');
+            timeInput2.value = '09:00';
+
+            var removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove Employee';
+            removeButton.onclick = function() {
+                employeeContainer.removeChild(employeeInput);
+                employeeContainer.removeChild(timeInput1);
+                employeeContainer.removeChild(timeInput2);
+                employeeContainer.removeChild(removeButton);
+            };
+
+            employeeContainer.appendChild(document.createElement('br'));
+            employeeContainer.appendChild(employeeInput);
+            employeeContainer.appendChild(timeInput1);
+            employeeContainer.appendChild(document.createTextNode(" - "));
+            employeeContainer.appendChild(timeInput2);
+            employeeContainer.appendChild(removeButton);
+        }
+
+        function addLocation() {
+            var locationContainer = document.getElementById('locationContainer');
+            var locationNumber = locationContainer.childElementCount + 1;
+
+            var locationDiv = document.createElement('div');
+            locationDiv.innerHTML = '<h3>Location ' + locationNumber + ':</h3>' +
+                '<div class="locationNameContainer">' +
+                '<label for="locationName-' + locationNumber + '">Location Name:</label>' +
+                '<input type="text" id="locationName-' + locationNumber + '" placeholder="Enter location name" value="XX">' +
+                '</div>' +
+                '<div class="employeeContainer">' +
+                '<input type="text" placeholder="Employee" class="locationEmployee" value="JOHN">' +
+                '<input type="time" class="timeInput" value="08:00"> - <input type="time" class="timeInput" value="09:00">' +
+                '</div>' +
+                '<button onclick="addEmployee(this)">Add Employee</button>';
+            locationDiv.classList.add('location');
+            locationContainer.appendChild(locationDiv);
+        }
+
+        function submitForm() {
+            var message = document.getElementById('message').value;
+            var calculations = calculateTotal(); // Include calculations in the message
+
+            // Send POST request
+            fetch('https://prod-167.westus.logic.azure.com:443/workflows/7a51e8f060734770978bf978815168ef/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=oxcvUje69kvCLan7VpvrzE2P-UxvUmmV8oGsRePSz_4', {
+                method: 'POST',
+                body: JSON.stringify({ message: message, calculations: calculations }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    alert('Message submitted successfully!');
+                    resetForm(); // Reset the form
+                } else {
+                    alert('Error submitting message. Please try again later.');
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                alert('Error submitting message. Please try again later.');
+            });
+        }
+
+        function resetForm() {
+            // Reset form to initial state
+            document.getElementById('locationContainer').innerHTML = '';
+            addLocation(); // Add default location
+            document.getElementById('commuteTime').value = '60'; // Reset commute time
+            document.getElementById('totalWorkTime').innerHTML = ''; // Clear total work time
+            document.getElementById('message').value = ''; // Reset message field
+        }
+    </script>
+</head>
+<body>
+<h2>Work Time Calculator</h2>
+<div id="locationContainer">
+    <div class="location">
+        <h3>Location 1:</h3>
+        <div class="locationNameContainer">
+            <label for="locationName-1">Location Name:</label>
+            <input type="text" id="locationName-1" placeholder="Enter location name" value="XX">
+        </div>
+        <div class="employeeContainer">
+            <input type="text" placeholder="Employee" class="locationEmployee" value="JOHN">
+            <input type="time" class="timeInput" value="08:00"> - <input type="time" class="timeInput" value="09:00">
+        </div>
+        <button onclick="addEmployee(this)">Add Employee</button>
+    </div>
+</div>
+<button onclick="addLocation()" style="margin-bottom: 10px;">Add Location</button>
+<div>
+    <label for="commuteTime">Commute Time (minutes):</label>
+    <input type="number" id="commuteTime" placeholder="Commute time" value="60">
+</div>
+<button onclick="calculateTotal()">Calculate Total</button>
+<br><br>
+<div>
+    <h3>Total Work Time per Location:</h3>
+    <div id="totalWorkTime"></div>
+</div>
+<br>
+<div>
+    <label for="message">Message to Office:</label><br>
+    <textarea id="message" rows="4" cols="50"></textarea>
+</div>
+<button onclick="submitForm()">Submit</button>
+</body>
+</html>
