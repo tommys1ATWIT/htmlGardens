@@ -6,10 +6,12 @@
     <title>Work Time Calculator</title>
     <script>
         function calculateTotal() {
-            var commuteTime = parseFloat(document.getElementById('commuteTime').value);
+            var totalCommuteTime = parseFloat(document.getElementById('totalCommuteTime').value) || 0; // Default total commute time to zero if not provided
+            var totalLunchTime = parseFloat(document.getElementById('totalLunchTime').value) || 0; // Default total lunch time to zero if not provided
 
             // Convert commute time to hours
-            var commuteTimeHours = commuteTime / 60; // convert minutes to hours
+            var totalCommuteTimeHours = totalCommuteTime / 60; // convert minutes to hours
+            var totalLunchTimeHours = totalLunchTime / 60; // convert minutes to hours
 
             var locationContainers = document.querySelectorAll('.location');
             var totalWorkTimePerLocation = [];
@@ -23,6 +25,7 @@
                 var employeesHTML = "<ul>";
 
                 for (var i = 0; i < locationTimes.length; i += 2) {
+                    var employeeName = locationTimes[i].previousElementSibling.value; // Fetch the employee name from the preceding input
                     var startTime = locationTimes[i].value;
                     var endTime = locationTimes[i + 1].value;
 
@@ -36,29 +39,25 @@
                     employeeWorkHours += employeeWorkTime;
                     totalEmployees++;
 
-                    var employeeName = locationContainer.querySelector('.locationEmployee').value;
                     employeesHTML += "<li>" + employeeName + ": " + employeeWorkTime.toFixed(2) + " hours (Start: " + startTime + ", Finish: " + endTime + ")</li>";
                 }
                 employeesHTML += "</ul>";
 
                 // Total work time for the location
-                totalWorkTime += employeeWorkHours;
-                totalWorkTimePerLocation.push({ workHours: employeeWorkHours, employeesHTML: employeesHTML }); // Store total work time and employees HTML for this location
-            });
-
-            var totalCommuteTime = 0;
-
-            locationContainers.forEach(function(locationContainer, index) {
-                var locationWorkTime = totalWorkTimePerLocation[index].workHours;
-                var locationCommuteTime = (locationWorkTime / totalWorkTime) * commuteTimeHours;
-                totalCommuteTime += locationCommuteTime;
+                var locationWorkTime = employeeWorkHours;
+                totalWorkTime += locationWorkTime;
+                totalWorkTimePerLocation.push({ workHours: locationWorkTime, employeesHTML: employeesHTML }); // Store total work time and employees HTML for this location
             });
 
             // Display total work time per location
             var totalWorkTimeHTML = "<ul>";
             totalWorkTimePerLocation.forEach(function(locationData, index) {
-                var locationName = document.getElementById('locationName-' + (index + 1)).value;
-                totalWorkTimeHTML += "<li>" + locationName + ": " + (locationData.workHours + (locationData.workHours / totalWorkTime * totalCommuteTime)).toFixed(2) + " hours";
+                var locationName = document.getElementById('billableClient-' + (index + 1)).value;
+                var locationWorkTime = locationData.workHours;
+                var locationCommuteTime = (totalCommuteTimeHours / totalWorkTime) * locationWorkTime;
+                var locationLunchTime = (totalLunchTimeHours / totalWorkTime) * locationWorkTime;
+                var totalLocationTime = locationWorkTime + locationCommuteTime + locationLunchTime;
+                totalWorkTimeHTML += "<li>" + locationName + ": " + totalLocationTime.toFixed(2) + " hours";
                 totalWorkTimeHTML += locationData.employeesHTML;
                 totalWorkTimeHTML += "</li>";
             });
@@ -66,7 +65,8 @@
 
             // Total commute time
             totalWorkTimeHTML += "<h3>Total Commute Time:</h3>";
-            totalWorkTimeHTML += "<p>" + totalCommuteTime.toFixed(2) + " hours</p>";
+            totalWorkTimeHTML += "<p>Total Commute Time: " + totalCommuteTimeHours.toFixed(2) + " hours</p>";
+            totalWorkTimeHTML += "<p>Total Lunch Time: " + totalLunchTimeHours.toFixed(2) + " hours</p>";
 
             document.getElementById('totalWorkTime').innerHTML = totalWorkTimeHTML;
 
@@ -85,12 +85,12 @@
             var timeInput1 = document.createElement('input');
             timeInput1.type = 'time';
             timeInput1.classList.add('timeInput');
-            timeInput1.value = '';
+            timeInput1.value = container.previousElementSibling.querySelector('.timeInput').value; // Set start time as the previous employee's start time
 
             var timeInput2 = document.createElement('input');
             timeInput2.type = 'time';
             timeInput2.classList.add('timeInput');
-            timeInput2.value = '';
+            timeInput2.value = container.previousElementSibling.querySelector('.timeInput + .timeInput').value; // Set end time as the previous employee's end time
 
             var removeButton = document.createElement('button');
             removeButton.textContent = 'Remove Employee';
@@ -114,10 +114,10 @@
             var locationNumber = locationContainer.childElementCount + 1;
 
             var locationDiv = document.createElement('div');
-            locationDiv.innerHTML = '<h3>Location ' + locationNumber + ':</h3>' +
+            locationDiv.innerHTML = '<h3>Billable Client ' + locationNumber + ':</h3>' +
                 '<div class="locationNameContainer">' +
-                '<label for="locationName-' + locationNumber + '">Location Name:</label>' +
-                '<input type="text" id="locationName-' + locationNumber + '" placeholder="Enter location name" value="">' +
+                '<label for="billableClient-' + locationNumber + '">Billable Client:</label>' +
+                '<input type="text" id="billableClient-' + locationNumber + '" placeholder="Enter client name" value="">' +
                 '</div>' +
                 '<div class="employeeContainer">' +
                 '<input type="text" placeholder="Employee" class="locationEmployee" value="">' +
@@ -131,6 +131,7 @@
         function submitForm() {
             var email = document.getElementById('email').value;
             var reportDate = document.getElementById('reportDate').value;
+            var reportType = document.getElementById('reportType').value; // Get the selected report type
             var message = document.getElementById('message').value.replace(/\n/g, "<br>");
             var calculations = calculateTotal(); // Include calculations in the message
 
@@ -144,6 +145,7 @@
             var messageObject = {
                 "email": email,
                 "reportDate": reportDate,
+                "reportType": reportType, // Include report type in the message object
                 "message": "<br><br><b>" + message + "</b><br><br>", // Wrap the message with <b> tags
                 "calculations": calculations
             };
@@ -174,7 +176,8 @@
             // Reset form to initial state
             document.getElementById('locationContainer').innerHTML = '';
             addLocation(); // Add default location
-            document.getElementById('commuteTime').value = ''; // Reset commute time
+            document.getElementById('totalCommuteTime').value = ''; // Reset total commute time
+            document.getElementById('totalLunchTime').value = ''; // Reset total lunch time
             document.getElementById('totalWorkTime').innerHTML = ''; // Clear total work time
             document.getElementById('message').value = ''; // Reset message field
         }
@@ -190,12 +193,20 @@
     <label for="reportDate">Date of Report:</label>
     <input type="date" id="reportDate" value="">
 </div>
+<div>
+    <label for="reportType">Type of Report:</label>
+    <select id="reportType">
+        <option value="Supervisor">Supervisor</option>
+        <option value="Correction">Correction</option>
+        <option value="Test">Test</option>
+    </select>
+</div>
 <div id="locationContainer">
     <div class="location">
-        <h3>Location 1:</h3>
+        <h3>Billable Client 1:</h3>
         <div class="locationNameContainer">
-            <label for="locationName-1">Location Name:</label>
-            <input type="text" id="locationName-1" placeholder="Enter location name" value="">
+            <label for="billableClient-1">Billable Client:</label>
+            <input type="text" id="billableClient-1" placeholder="Enter client name" value="">
         </div>
         <div class="employeeContainer">
             <input type="text" placeholder="Employee" class="locationEmployee" value="">
@@ -206,8 +217,12 @@
 </div>
 <button onclick="addLocation()" style="margin-bottom: 10px;">Add Location</button>
 <div>
-    <label for="commuteTime">Commute Time (minutes):</label>
-    <input type="number" id="commuteTime" placeholder="Commute time">
+    <label for="totalCommuteTime">Total Commute Time (minutes):</label>
+    <input type="number" id="totalCommuteTime" placeholder="Total commute time" value="0"> <!-- Set default total commute time to zero -->
+</div>
+<div>
+    <label for="totalLunchTime">Total Lunch Time (minutes):</label>
+    <input type="number" id="totalLunchTime" placeholder="Total lunch time" value="0"> <!-- Set default total lunch time to zero -->
 </div>
 <button onclick="calculateTotal()">Calculate Total</button>
 <br><br>
