@@ -17,16 +17,21 @@
             var totalWorkTime = 0;
             var totalEmployees = 0;
 
-            locationContainers.forEach(function(locationContainer) {
+            locationContainers.forEach(function(locationContainer, index) {
                 var locationTimes = locationContainer.querySelectorAll('.timeInput');
+                var locationEmployees = locationContainer.querySelectorAll('.locationEmployee');
 
                 var employeeWorkHours = 0;
                 var employeesHTML = "<ul>";
 
                 for (var i = 0; i < locationTimes.length; i += 2) {
-                    var employeeName = locationTimes[i].previousElementSibling.value; // Fetch the employee name from the preceding input
+                    var employeeName = locationEmployees[Math.floor(i / 2)].value; // Fetch the employee name based on index
                     var startTime = locationTimes[i].value;
                     var endTime = locationTimes[i + 1].value;
+
+                    if (!startTime || !endTime || !employeeName) {
+                        continue; // Skip if any time or employee name is missing
+                    }
 
                     var startTimeParts = startTime.split(':');
                     var endTimeParts = endTime.split(':');
@@ -45,13 +50,17 @@
                 // Total work time for the location
                 var locationWorkTime = employeeWorkHours;
                 totalWorkTime += locationWorkTime;
-                totalWorkTimePerLocation.push({ workHours: locationWorkTime, employeesHTML: employeesHTML }); // Store total work time and employees HTML for this location
+                totalWorkTimePerLocation.push({
+                    workHours: locationWorkTime,
+                    employeesHTML: employeesHTML,
+                    name: locationContainer.querySelector('.locationName').value // Store location name
+                }); // Store total work time and employees HTML for this location
             });
 
             // Display total work time per location
             var totalWorkTimeHTML = "<ul>";
-            totalWorkTimePerLocation.forEach(function(locationData, index) {
-                var locationName = document.getElementById('billableClient-' + (index + 1)).value;
+            totalWorkTimePerLocation.forEach(function(locationData) {
+                var locationName = locationData.name;
                 var locationWorkTime = locationData.workHours;
                 var locationCommuteTime = (totalCommuteTimeHours / totalWorkTime) * locationWorkTime;
                 var locationLunchTime = (totalLunchTimeHours / totalWorkTime) * locationWorkTime;
@@ -84,12 +93,12 @@
             var timeInput1 = document.createElement('input');
             timeInput1.type = 'time';
             timeInput1.classList.add('timeInput');
-            timeInput1.value = container.previousElementSibling.querySelector('.timeInput').value; // Set start time as the previous employee's start time
+            timeInput1.value = employeeContainer.querySelector('.timeInput').value; // Set start time as the previous employee's start time
 
             var timeInput2 = document.createElement('input');
             timeInput2.type = 'time';
             timeInput2.classList.add('timeInput');
-            timeInput2.value = container.previousElementSibling.querySelector('.timeInput + .timeInput').value; // Set end time as the previous employee's end time
+            timeInput2.value = employeeContainer.querySelector('.timeInput + .timeInput').value; // Set end time as the previous employee's end time
 
             var removeButton = document.createElement('button');
             removeButton.textContent = 'Remove Employee';
@@ -116,15 +125,21 @@
             locationDiv.innerHTML = '<h3>Billable Client ' + locationNumber + ':</h3>' +
                 '<div class="locationNameContainer">' +
                 '<label for="billableClient-' + locationNumber + '">Billable Client:</label>' +
-                '<input type="text" id="billableClient-' + locationNumber + '" placeholder="Enter client name" value="">' +
+                '<input type="text" id="billableClient-' + locationNumber + '" class="locationName" placeholder="Enter client name" value="">' +
                 '</div>' +
                 '<div class="employeeContainer">' +
                 '<input type="text" placeholder="Employee" class="locationEmployee" value="">' +
                 '<input type="time" class="timeInput" value=""> - <input type="time" class="timeInput" value=""> ' +
                 '</div>' +
-                '<button onclick="addEmployee(this)">Add Employee</button>';
+                '<button onclick="addEmployee(this)">Add Employee</button>' +
+                '<button onclick="removeLocation(this)" style="margin-left: 10px;">Remove Location</button>'; // Add Remove Location button
             locationDiv.classList.add('location');
             locationContainer.appendChild(locationDiv);
+        }
+
+        function removeLocation(button) {
+            var locationContainer = document.getElementById('locationContainer');
+            locationContainer.removeChild(button.parentElement); // Remove the location div that contains the button
         }
 
         function submitForm() {
@@ -172,8 +187,11 @@
         }
 
         function resetForm() {
-            // Reset form to initial state
-            document.getElementById('locationContainer').innerHTML = '';
+            document.getElementById('email').value = ''; // Reset email field
+            document.getElementById('reportDate').value = ''; // Reset report date field
+            document.getElementById('reportType').value = 'Supervisor'; // Reset report type to default
+            var locationContainer = document.getElementById('locationContainer');
+            locationContainer.innerHTML = ''; // Clear location container
             addLocation(); // Add default location
             document.getElementById('totalCommuteTime').value = ''; // Reset total commute time
             document.getElementById('totalLunchTime').value = ''; // Reset total lunch time
@@ -205,23 +223,24 @@
         <h3>Billable Client 1:</h3>
         <div class="locationNameContainer">
             <label for="billableClient-1">Billable Client:</label>
-            <input type="text" id="billableClient-1" placeholder="Enter client name" value="">
+            <input type="text" id="billableClient-1" class="locationName" placeholder="Enter client name" value="">
         </div>
         <div class="employeeContainer">
             <input type="text" placeholder="Employee" class="locationEmployee" value="">
             <input type="time" class="timeInput" value=""> - <input type="time" class="timeInput" value=""> 
         </div>
         <button onclick="addEmployee(this)">Add Employee</button>
+        <button onclick="removeLocation(this)" style="margin-left: 10px;">Remove Location</button>
     </div>
 </div>
 <button onclick="addLocation()" style="margin-bottom: 10px;">Add Location</button>
 <div>
     <label for="totalCommuteTime">Total Commute Time (minutes):</label>
-    <input type="number" id="totalCommuteTime" placeholder="Total commute time" value="0"> <!-- Set default total commute time to zero -->
+    <input type="number" id="totalCommuteTime" placeholder="Total commute time" value="0">
 </div>
 <div>
     <label for="totalLunchTime">Total Lunch Time (minutes):</label>
-    <input type="number" id="totalLunchTime" placeholder="Total lunch time" value="0"> <!-- Set default total lunch time to zero -->
+    <input type="number" id="totalLunchTime" placeholder="Total lunch time" value="0">
 </div>
 <button onclick="calculateTotal()">Calculate Total</button>
 <br><br>
@@ -232,7 +251,7 @@
 <br>
 <div>
     <h3>Message to Office:</h3>
-    <textarea id="message" rows="8" cols="50"></textarea> <!-- Increased rows for larger message -->
+    <textarea id="message" rows="8" cols="50"></textarea>
 </div>
 <button onclick="submitForm()">Submit</button>
 </body>
