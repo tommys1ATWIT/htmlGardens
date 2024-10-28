@@ -141,6 +141,12 @@
             var locationContainer = document.getElementById('locationContainer');
             locationContainer.removeChild(button.parentElement); // Remove the location div that contains the button
         }
+      
+      function validateEmail(email) {
+        // Basic email validation pattern
+        var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailPattern.test(email);
+    }
 
         function submitForm() {
             var email = document.getElementById('email').value;
@@ -148,6 +154,12 @@
             var reportType = document.getElementById('reportType').value; // Get the selected report type
             var message = document.getElementById('message').value.replace(/\n/g, "<br>");
             var calculations = calculateTotal(); // Include calculations in the message
+          
+          // Check if email is in the correct format using validateEmail function
+        if (!validateEmail(email)) {
+            alert('ERROR: Please enter a valid email address.');
+            return;
+        }
 
             // Check if required fields (email and reportDate) are filled
             if (!email || !reportDate) {
